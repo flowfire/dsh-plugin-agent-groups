@@ -1,5 +1,12 @@
 # dsh-plugin-agent-groups
 
+[![CI](https://github.com/flowfire/dsh-plugin-agent-groups/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/flowfire/dsh-plugin-agent-groups/actions/workflows/ci.yml)
+[![GitHub stars](https://img.shields.io/github/stars/flowfire/dsh-plugin-agent-groups?style=flat-square&label=stars)](https://github.com/flowfire/dsh-plugin-agent-groups/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/flowfire/dsh-plugin-agent-groups?style=flat-square&label=forks)](https://github.com/flowfire/dsh-plugin-agent-groups/forks)
+[![Release](https://img.shields.io/github/v/release/flowfire/dsh-plugin-agent-groups?style=flat-square&label=release)](https://github.com/flowfire/dsh-plugin-agent-groups/releases)
+[![License](https://img.shields.io/github/license/flowfire/dsh-plugin-agent-groups?style=flat-square&label=license)](LICENSE)
+[![dsh-plugin](https://img.shields.io/badge/topic-dsh--plugin-4B6BFB?style=flat-square)](https://github.com/topics/dsh-plugin)
+
 > A DeepSeek Harness (DSH) plugin for multi-session collaboration groups.
 
 ## 问题
