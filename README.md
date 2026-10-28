@@ -1,4 +1,4 @@
-# dsh-agent-groups · 多会话协作群
+# dsh-plugin-agent-groups · 多会话协作群
 
 > A DSH (DeepSeek Harness) plugin that pulls multiple live sessions into one collaboration group. Each member keeps its own role and stance; the plugin relays only each round's final output on a shared timeline.
 
@@ -14,10 +14,16 @@
 需要 DeepSeek Harness 0.2.x（Node 22.19+ / 24+）。
 
 ```bash
-git clone https://github.com/flowfire/dsh-agent-groups.git
+git clone https://github.com/flowfire/dsh-plugin-agent-groups.git
 ```
 
-在 DSH 会话里把 clone 下来的目录安装为 bundle（agent 工具 `plugin_manager` 的 `install_bundle`，`target` 指向该目录），然后刷新页面。安装后侧边栏会出现「多会话协作群」。
+用社区标准安装命令：
+
+```bash
+dsh plugin --profile web add github:flowfire/dsh-plugin-agent-groups
+```
+
+或者把 clone 下来的目录当作 bundle，通过 agent 工具 `plugin_manager` 的 `install_bundle` 安装（`target` 指向该目录）。安装后刷新页面，侧边栏会出现「多会话协作群」。
 
 插件数据默认写在 `$DSH_HOME/storages/agent-groups/state.json`，不会修改任何会话日志。
 
@@ -87,7 +93,7 @@ $DSH_HOME/storages/agent-groups/state.json
 
 ```yaml
 - id: agent-groups
-  name: dsh-agent-groups
+  name: dsh-plugin-agent-groups
   config:
     maxMessages: 80        # 每个群的成员发言上限
     deliveryDelayMs: 150   # 合并投递的合并窗口

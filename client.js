@@ -1,15 +1,15 @@
-// dsh-agent-groups — Client 半边：侧边栏入口 + 主面板。
+// dsh-plugin-agent-groups — Client 半边：侧边栏入口 + 主面板。
 //
 // 面板只用宿主主题 token（--dsw-alias-*）和自己的控件，不 import 任何 Harness Client 包。
-// Host 通过 /plugins/dsh-agent-groups/api 暴露只读状态与群操作；面板定时轮询刷新。
+// Host 通过 /plugins/dsh-plugin-agent-groups/api 暴露只读状态与群操作；面板定时轮询刷新。
 window.__ModuleLoader__.load({
-  id: 'dsh-agent-groups',
+  id: 'dsh-plugin-agent-groups',
   factory(require) {
     const React = require('react');
     const h = React.createElement;
     const { useCallback, useEffect, useMemo, useRef, useState } = React;
 
-    const API = '/plugins/dsh-agent-groups/api';
+    const API = '/plugins/dsh-plugin-agent-groups/api';
     const PANEL_ID = 'agent-groups';
     const POLL_MS = 1800;
     const TIMELINE_WINDOW = 300;
@@ -409,7 +409,7 @@ window.__ModuleLoader__.load({
       return String(template || '').replaceAll('{name}', name);
     }
 
-    const DRAFT_KEY = 'dsh-agent-groups:draft';
+    const DRAFT_KEY = 'dsh-plugin-agent-groups:draft';
 
     function readDraft() {
       try {

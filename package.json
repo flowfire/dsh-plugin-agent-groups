@@ -1,18 +1,18 @@
 {
-  "name": "dsh-agent-groups",
+  "name": "dsh-plugin-agent-groups",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "把多个现有 DSH 会话拉进一个协作群，按时间线自动转达彼此的最终输出。",
   "license": "MIT",
   "author": "flowfire",
-  "homepage": "https://github.com/flowfire/dsh-agent-groups#readme",
+  "homepage": "https://github.com/flowfire/dsh-plugin-agent-groups#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/flowfire/dsh-agent-groups.git"
+    "url": "git+https://github.com/flowfire/dsh-plugin-agent-groups.git"
   },
   "bugs": {
-    "url": "https://github.com/flowfire/dsh-agent-groups/issues"
+    "url": "https://github.com/flowfire/dsh-plugin-agent-groups/issues"
   },
   "keywords": [
     "deepseek",

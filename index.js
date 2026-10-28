@@ -1,4 +1,4 @@
-// dsh-agent-groups — Host 半边。
+// dsh-plugin-agent-groups — Host 半边。
 //
 // 职责：
 //   1. 维护“协作群”状态（成员、时间线、投递游标），并持久化到 DSH 数据目录；
@@ -18,7 +18,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 
-const ROUTE = '/plugins/dsh-agent-groups/api';
+const ROUTE = '/plugins/dsh-plugin-agent-groups/api';
 const EXIT_KEYWORD = '【退出会话】';
 const SILENT_KEYWORD = '【静默】';
 const USER_SPEAKER_NAME = '发起者';
