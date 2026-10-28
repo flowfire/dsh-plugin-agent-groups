@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "main": "index.js",
   "description": "把多个现有 DSH 会话拉进一个协作群，按时间线自动转达彼此的最终输出。",
   "license": "MIT",
   "author": "flowfire",
@@ -28,7 +29,8 @@
     ".": "./index.js",
     "./client": "./client.js",
     "./locale/*.json": "./locale/*.json",
-    "./icon": "./icon.svg"
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
   },
   "files": [
     "index.js",
