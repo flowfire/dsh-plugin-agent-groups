@@ -1,0 +1,3 @@
+- insert:
+    - id: agent-groups
+      name: dsh-agent-groups

@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax check
+        run: |
+          node --check index.js
+          node --check client.js
+      - name: Validate manifest and locales
+        run: |
+          node -e "const fs=require('node:fs'); for (const file of ['package.json','locale/zh.json','locale/en.json']) { JSON.parse(fs.readFileSync(file,'utf8')); } console.log('manifests ok')"

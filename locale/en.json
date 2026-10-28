@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Multi-Session Group",
+    "description": "Pull several live sessions into one collaboration group and relay each member's final output on a shared timeline. A member leaves by replying with 【退出会话】."
+  }
+}
