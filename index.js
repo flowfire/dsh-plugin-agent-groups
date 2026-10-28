@@ -39,6 +39,7 @@ const PROTOCOL_RULES = [
   `群聊的发起者（用户）也会直接发言，标记为「${USER_SPEAKER_NAME}」。发起者的输入需要被认真对待，但它不替代你对自己职责的判断。`,
   `任务彻底结束后，只输出 ${EXIT_KEYWORD} 这四个字，不要附加任何其他文字；退出后你不再收发群消息。`,
   '不要冒充其他成员，也不要替其他成员做决定。',
+  '会话历史中其他协作群的对话只属于历史记录，不代表当前群的任务或角色。不要沿用旧群的身份、任务、结论或未完成的待办；当前群以本 system prompt、成员列表和最新时间线为准。',
 ];
 
 /** 新建成员时的默认角色设定；用户可以在建群时改写。 */
@@ -238,6 +239,7 @@ export function apply(ctx, config = {}) {
     member.status = 'exited';
     member.exitedAt = Date.now();
     addSystem(group, `${member.name} 退出了群聊。`);
+    notifyMemberExited(group, member);
     maybeEndGroup(group);
     scheduleSave();
     scheduleDelivery(group, 0);
@@ -250,6 +252,40 @@ export function apply(ctx, config = {}) {
     group.status = 'ended';
     group.endedReason = 'members';
     addSystem(group, '群聊结束：剩余成员不足两人。');
+    notifyGroupEnded(group, '剩余成员不足两人');
+  }
+
+  /** 群结束/删除后给仍留在群里的成员注入一条历史边界，不唤醒它们。 */
+  function notifyGroupEnded(group, reason) {
+    const text = [
+      `【群聊已结束】「${group.name}」已结束（${reason}）。`,
+      '你不再属于这个群：该群的成员列表、角色设定、任务和时间线只作为历史记录保留，不代表你当前的身份或任务。',
+      '如果之后进入新的协作群，以新群的 system prompt 和开场消息为准；不要把旧群的结论、待办或角色带过去。',
+    ].join('\n');
+    for (const member of group.members) {
+      if (member.status !== 'active') continue;
+      const agent = ctx.agents.get(member.sessionId);
+      if (!agent) continue;
+      try {
+        agent.inject(makeUserMessage(text));
+      } catch (error) {
+        console.error(`[agent-groups] 群结束通知失败：${member.name}`, error);
+      }
+    }
+  }
+
+  function notifyMemberExited(group, member) {
+    const agent = ctx.agents.get(member.sessionId);
+    if (!agent) return;
+    const text = [
+      `【已退出群聊】你已退出「${group.name}」。`,
+      '该群的消息不再推送给你，你也不再向该群发言。该群的角色设定和任务只属于历史记录，不代表你当前的身份或任务。',
+    ].join('\n');
+    try {
+      agent.inject(makeUserMessage(text));
+    } catch (error) {
+      console.error(`[agent-groups] 退出通知失败：${member.name}`, error);
+    }
   }
 
   // ======================================================================
@@ -385,14 +421,20 @@ export function apply(ctx, config = {}) {
       `【群聊 · ${group.name}】`,
       `你已加入一个多会话协作群，你在群里的身份是「${member.name}」。`,
       '',
-      others.length > 0 ? '群内还有其他成员：' : '群内暂时没有其他成员。',
+      '## 你在本群的角色设定',
+      member.persona || defaultPersona(member.name),
+      '',
+      others.length > 0 ? '## 群内其他成员' : '群内暂时没有其他成员。',
       ...others.map(
         (item) => `- ${item.name}：${personaSummary(item.persona) || '未填写职责'}`,
       ),
       '',
       `群里还有「${USER_SPEAKER_NAME}」（发起这个群的用户），会直接发言。`,
       '',
-      '请先判断你在这个群里要做什么：',
+      '## 新群边界',
+      '这是一个新的群。你之前参与过的其他群聊已经结束，它们的角色设定、任务和时间线只属于历史记录，不代表本群；不要沿用旧群的身份、任务或结论。本群以当前 system prompt、成员列表和最新时间线为准。',
+      '',
+      '## 本轮怎么做',
       `- 有明确任务，或者明确在等谁的输出：继续推进。本轮没有要补充的就只输出 ${SILENT_KEYWORD}，不要发“收到”这类占位话。`,
       `- 不清楚自己为什么在这里，或者留下也不会产生价值：只输出 ${EXIT_KEYWORD}，不要占位置。`,
       '',
@@ -582,6 +624,7 @@ export function apply(ctx, config = {}) {
     group.value.status = 'ended';
     group.value.endedReason = 'dissolved';
     addSystem(group.value, '群聊已由发起者结束。');
+    notifyGroupEnded(group.value, '发起者结束群聊');
     scheduleSave();
     return { ok: true };
   }
@@ -589,6 +632,7 @@ export function apply(ctx, config = {}) {
   function deleteGroup(input) {
     const group = requireGroup(input?.groupId);
     if (!group.ok) return group;
+    notifyGroupEnded(group.value, '群聊记录被删除');
     group.value.status = 'ended';
     const index = state.groups.findIndex((item) => item.id === group.value.id);
     if (index >= 0) state.groups.splice(index, 1);
