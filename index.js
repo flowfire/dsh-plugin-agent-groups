@@ -417,6 +417,14 @@ export function apply(ctx, config = {}) {
     const others = group.members.filter(
       (item) => item.status === 'active' && item.id !== member.id,
     );
+    const previousGroups = state.groups
+      .filter(
+        (item) =>
+          item.id !== group.id &&
+          item.status === 'ended' &&
+          item.members.some((entry) => entry.sessionId === member.sessionId),
+      )
+      .map((item) => item.name);
     return [
       `【群聊 · ${group.name}】`,
       `你已加入一个多会话协作群，你在群里的身份是「${member.name}」。`,
@@ -432,7 +440,9 @@ export function apply(ctx, config = {}) {
       `群里还有「${USER_SPEAKER_NAME}」（发起这个群的用户），会直接发言。`,
       '',
       '## 新群边界',
-      '这是一个新的群。你之前参与过的其他群聊已经结束，它们的角色设定、任务和时间线只属于历史记录，不代表本群；不要沿用旧群的身份、任务或结论。本群以当前 system prompt、成员列表和最新时间线为准。',
+      previousGroups.length > 0
+        ? `你之前参与过的这些群已经结束：${previousGroups.map((name) => `「${name}」`).join('、')}。它们的角色设定、任务和时间线只属于历史记录，不代表本群；不要沿用旧群的身份、任务或结论。本群以当前 system prompt、成员列表和最新时间线为准。`
+        : '这是一个新的群。你之前参与过的其他群聊已经结束，它们的角色设定、任务和时间线只属于历史记录，不代表本群；不要沿用旧群的身份、任务或结论。本群以当前 system prompt、成员列表和最新时间线为准。',
       '',
       '## 本轮怎么做',
       `- 有明确任务，或者明确在等谁的输出：继续推进。本轮没有要补充的就只输出 ${SILENT_KEYWORD}，不要发“收到”这类占位话。`,
