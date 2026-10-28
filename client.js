@@ -371,13 +371,14 @@ window.__ModuleLoader__.load({
     function groupStatusLabel(status) {
       if (status === 'active') return '进行中';
       if (status === 'paused') return '已暂停';
+      if (status === 'closing') return '关闭中';
       if (status === 'ended') return '已结束';
       return status;
     }
 
     function groupStatusColor(status) {
       if (status === 'active') return 'var(--dsw-alias-state-success-primary)';
-      if (status === 'paused') return 'var(--dsw-alias-state-warn-primary)';
+      if (status === 'paused' || status === 'closing') return 'var(--dsw-alias-state-warn-primary)';
       return 'var(--dsw-alias-label-secondary)';
     }
 
@@ -809,7 +810,7 @@ window.__ModuleLoader__.load({
         h(
           'p',
           { style: S.pageDesc },
-          '从这里可以选择的，是当前已经在浏览器中打开的会话。每个成员会拿到自己的名字、角色设定，以及一份由插件维护的群协议。',
+          '只能选择空闲、且不在任何未结束群里的会话。运行中或已在群里的会话需要先等它结束；每个成员会拿到自己的名字、角色设定和一份由插件维护的群协议。',
         ),
         error ? h('div', { style: S.error }, error) : null,
         h(
@@ -848,7 +849,8 @@ window.__ModuleLoader__.load({
             : sessions.map((session) => {
                 const isSelected = selected.some((item) => item.sessionId === session.id);
                 const ownerGroup = groups.find((group) => group.id === session.groupId);
-                const disabled = Boolean(ownerGroup);
+                const busy = session.agentStatus === 'running';
+                const disabled = Boolean(ownerGroup) || busy;
                 return h(
                   'div',
                   {
@@ -871,10 +873,10 @@ window.__ModuleLoader__.load({
                     'span',
                     { style: S.sessionMeta },
                     disabled
-                      ? `已在「${ownerGroup.name}」`
-                      : session.agentStatus === 'running'
-                        ? '运行中'
-                        : '空闲',
+                      ? ownerGroup
+                        ? `已在「${ownerGroup.name}」`
+                        : '运行中，等它停止'
+                      : '空闲',
                   ),
                 );
               }),
@@ -1029,7 +1031,9 @@ window.__ModuleLoader__.load({
             h(
               'div',
               { style: S.detailSub },
-              `${activeMembers.length} 名成员 · ${group.messageCount}/${group.maxMessages} 条成员消息 · 创建于 ${fmtDateTime(group.createdAt)}`,
+              `${activeMembers.length} 名成员 · ${group.messageCount}/${group.maxMessages} 条成员消息 · 创建于 ${fmtDateTime(group.createdAt)}${
+                group.status === 'closing' ? ' · 等最后一名成员停止后自动关闭' : ''
+              }`,
             ),
           ),
           h(

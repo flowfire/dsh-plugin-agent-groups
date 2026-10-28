@@ -167,6 +167,7 @@ export function apply(ctx, config = {}) {
         eventSeq: event.seq,
         time: event.time,
       });
+      if (group.status === 'closing') maybeCloseNow(group);
     }
   }
 
@@ -175,6 +176,10 @@ export function apply(ctx, config = {}) {
     if (payload.status !== 'idle') return;
     const group = groupOfSession(payload.agent.id);
     if (!group) return;
+    if (group.status === 'closing') {
+      maybeCloseNow(group);
+      return;
+    }
     scheduleDelivery(group, 0);
   }
 
@@ -240,19 +245,76 @@ export function apply(ctx, config = {}) {
     member.exitedAt = Date.now();
     addSystem(group, `${member.name} 退出了群聊。`);
     notifyMemberExited(group, member);
-    maybeEndGroup(group);
+    beginCloseGroup(group);
     scheduleSave();
-    scheduleDelivery(group, 0);
   }
 
-  function maybeEndGroup(group) {
+  /**
+   * 成员不足两人时进入 closing：不再转发/投递，等最后一名成员真正停止后关闭。
+   * 关闭时把最后一名成员也标记为 exited，群不再更新任何信息。
+   */
+  function beginCloseGroup(group) {
     if (group.status === 'ended') return;
+    if (group.status === 'closing') {
+      maybeCloseNow(group);
+      return;
+    }
     const remaining = group.members.filter((item) => item.status === 'active');
     if (remaining.length >= 2) return;
+    if (remaining.length === 0) {
+      closeGroup(group, '所有成员都已退出');
+      return;
+    }
+
+    group.status = 'closing';
+    group.endedReason = 'closing';
+    const member = remaining[0];
+    const agent = ctx.agents.get(member.sessionId);
+    if (agent && agent.status === 'running') {
+      addSystem(
+        group,
+        `群聊即将关闭：只剩「${member.name}」一名成员，等它停止后自动关闭。`,
+      );
+      scheduleSave();
+      return;
+    }
+    closeGroup(
+      group,
+      agent ? `最后一名成员「${member.name}」已停止` : `最后一名成员「${member.name}」已离线`,
+    );
+  }
+
+  function maybeCloseNow(group) {
+    if (group.status !== 'closing') return;
+    const remaining = group.members.filter((item) => item.status === 'active');
+    if (remaining.length === 0) {
+      closeGroup(group, '所有成员都已退出');
+      return;
+    }
+    if (remaining.length > 1) return;
+    const member = remaining[0];
+    const agent = ctx.agents.get(member.sessionId);
+    if (agent && agent.status === 'running') return;
+    closeGroup(
+      group,
+      agent ? `最后一名成员「${member.name}」已停止` : `最后一名成员「${member.name}」已离线`,
+    );
+  }
+
+  function closeGroup(group, reason, endedReason = 'closed') {
+    if (group.status === 'ended') return;
     group.status = 'ended';
-    group.endedReason = 'members';
-    addSystem(group, '群聊结束：剩余成员不足两人。');
-    notifyGroupEnded(group, '剩余成员不足两人');
+    group.endedReason = endedReason;
+    addSystem(group, `群聊已关闭：${reason}。`);
+    // 先通知仍处于 active 的成员，再把它们标记为 exited。
+    notifyGroupEnded(group, reason);
+    for (const member of group.members) {
+      if (member.status === 'active') {
+        member.status = 'exited';
+        member.exitedAt = Date.now();
+      }
+    }
+    scheduleSave();
   }
 
   /** 群结束/删除后给仍留在群里的成员注入一条历史边界，不唤醒它们。 */
@@ -381,7 +443,7 @@ export function apply(ctx, config = {}) {
   function buildProtocolPrompt(agent) {
     const group = groupOfSession(agent.id);
     if (!group) return '';
-    if (group.status === 'ended') return '';
+    if (group.status === 'ended' || group.status === 'closing') return '';
     const member = group.members.find((item) => item.sessionId === agent.id);
     if (!member || member.status !== 'active') return '';
 
@@ -560,6 +622,12 @@ export function apply(ctx, config = {}) {
       if (!agent) {
         return { ok: false, message: `会话「${titleOf(session)}」没有活动的 Agent，请先打开它` };
       }
+      if (agent.status === 'running') {
+        return {
+          ok: false,
+          message: `会话「${titleOf(session)}」正在执行任务，请等它停止后再建群`,
+        };
+      }
 
       const name = uniqueMemberName(
         members,
@@ -631,11 +699,7 @@ export function apply(ctx, config = {}) {
     const group = requireGroup(input?.groupId);
     if (!group.ok) return group;
     if (group.value.status === 'ended') return { ok: false, message: '群聊已经结束' };
-    group.value.status = 'ended';
-    group.value.endedReason = 'dissolved';
-    addSystem(group.value, '群聊已由发起者结束。');
-    notifyGroupEnded(group.value, '发起者结束群聊');
-    scheduleSave();
+    closeGroup(group.value, '发起者结束群聊', 'dissolved');
     return { ok: true };
   }
 
@@ -701,9 +765,8 @@ export function apply(ctx, config = {}) {
     member.status = 'removed';
     member.exitedAt = Date.now();
     addSystem(group.value, `${member.name} 被移出了群聊。`);
-    maybeEndGroup(group.value);
+    beginCloseGroup(group.value);
     scheduleSave();
-    scheduleDelivery(group.value, 0);
     return { ok: true };
   }
 
@@ -711,6 +774,7 @@ export function apply(ctx, config = {}) {
     const group = requireGroup(input?.groupId);
     if (!group.ok) return group;
     if (group.value.status === 'ended') return { ok: false, message: '群聊已经结束，不能继续加人' };
+    if (group.value.status === 'closing') return { ok: false, message: '群聊正在关闭，不能再加人' };
 
     const sessionId = String(input?.sessionId ?? '').trim();
     if (!sessionId) return { ok: false, message: '缺少会话' };
@@ -719,7 +783,11 @@ export function apply(ctx, config = {}) {
     if (session.header?.origin === 'subagent') return { ok: false, message: '子会话不能拉入协作群' };
     const owner = groupOfSession(sessionId);
     if (owner) return { ok: false, message: `该会话已经在「${owner.name}」里` };
-    if (!ctx.agents.get(sessionId)) return { ok: false, message: '该会话没有活动的 Agent' };
+    const memberAgent = ctx.agents.get(sessionId);
+    if (!memberAgent) return { ok: false, message: '该会话没有活动的 Agent' };
+    if (memberAgent.status === 'running') {
+      return { ok: false, message: '该会话正在执行任务，请等它停止后再加入' };
+    }
 
     const name = uniqueMemberName(
       group.value.members,
